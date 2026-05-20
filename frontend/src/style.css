@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+@theme {
+    /* Warna Primer */
+    --color-primary: #2563eb;
+    /* Warna Sekunder */
+    --color-secondary: #475569;
+    /* Warna Indikator Sukses */
+    --color-success: #22c55e;
+    /* Warna Indikator Peringatan */
+    --color-warning: #f59e0b;
+    /* Warna Indikator Kritis/Bahaya */
+    --color-danger: #ef4444;
+    /* Warna Indikator Informasi */
+    --color-info: #06b6d4;
+
+    /* Latar Belakang Utama Aplikasi */
+    --color-surface-main: #0a1220;
+    /* Latar Belakang Kartu/Modal/Panel Samping */
+    --color-surface-elevated: #111c2d;
+    /* Latar Belakang Hover/State Aktif/Baris Terpilih */
+    --color-surface-soft: #162235;
+    /* Warna Garis Pembatas/Garis Tabel */
+    --color-border-industrial: #23324d;
+    /* Warna Teks Utama */
+    --color-on-surface: #e2e8f0;
+    /* Warna Teks Muted/Keterangan Pendukung */
+    --color-muted-text: #94a3b8;
+
+    /* Pemetaan Warna Dasar untuk Komponen DaisyUI */
+    --color-base-100: #0a1220;
+    --color-base-200: #111c2d;
+    --color-base-300: #162235;
+    --color-base-content: #e2e8f0;
+
+    /* Tipografi Proyek */
+    --font-sans: "Inter", system-ui, sans-serif;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a1220;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #23324d;
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #2563eb;
+}
+
+/* Elegant glass card glow */
+.glass-panel {
+    backdrop-filter: blur(12px);
+    background: rgba(17, 28, 45, 0.75);
+    border: 1px solid rgba(35, 50, 77, 0.6);
+}
