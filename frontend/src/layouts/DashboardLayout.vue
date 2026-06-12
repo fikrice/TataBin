@@ -20,6 +20,7 @@
         <!-- Kelompok Operasional -->
         <p v-show="sidebarOpen" class="px-2 pb-2 text-xs font-semibold uppercase tracking-widest" style="color:#475569;">Operasional</p>
         <NavItem :icon="dashIcon" label="Dashboard" to="/dashboard" :collapsed="!sidebarOpen" />
+        <NavItem :icon="woIcon" label="Work Orders" to="/work-orders" :collapsed="!sidebarOpen" />
         <NavItem :icon="inboundIcon" label="Inbound" to="/inbound" :collapsed="!sidebarOpen" />
         <NavItem :icon="outboundIcon" label="Outbound" to="/outbound" :collapsed="!sidebarOpen" />
         <NavItem :icon="analyticsIcon" label="Analitik Stok" to="/analytics" :collapsed="!sidebarOpen" />
@@ -156,8 +157,14 @@ const pageTitles = {
   '/outbound': 'Operasional Outbound',
   '/reports': 'Log Transaksi',
   '/analytics': 'Analitik Stok',
+  '/work-orders': 'Work Orders',
 };
-const pageTitle = computed(() => pageTitles[route.path] || 'TataBin WMS');
+const pageTitle = computed(() => {
+  if (route.path.startsWith('/work-orders/') && route.path.endsWith('/process')) {
+    return 'Proses Work Order';
+  }
+  return pageTitles[route.path] || 'TataBin WMS';
+});
 
 /**
  * Melakukan logout dan mengarahkan ke halaman login
@@ -221,6 +228,7 @@ watch(() => route.path, () => {
 
 // Ikon Lucide string names
 const dashIcon = 'layout-dashboard';
+const woIcon = 'clipboard-list';
 const inboundIcon = 'download';
 const outboundIcon = 'upload';
 const warehouseIcon = 'warehouse';

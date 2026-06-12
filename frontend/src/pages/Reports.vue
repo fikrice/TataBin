@@ -71,56 +71,47 @@
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="w-full text-sm text-left min-w-[1000px]">
+        <table class="w-full text-sm text-left min-w-[1200px]">
           <thead style="background:#162235; border-bottom:1px solid #23324d;">
             <tr>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-left" style="color:#94a3b8; width: 70px;">No.</th>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8; width: 200px;">Ref / Tanggal</th>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8; width: 120px;">Tipe</th>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Aset / SKU</th>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Lokasi (Bin)</th>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-right" style="color:#94a3b8; width: 120px;">Kuantitas</th>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-right" style="color:#94a3b8; width: 150px;">Harga Satuan</th>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-right" style="color:#94a3b8; width: 160px;">Total Nilai</th>
-              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8; width: 220px;">Supplier / Petugas</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-left" style="color:#94a3b8; width: 60px;">No.</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8; width: 140px;">WO Number</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8; width: 120px;">Category</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Warehouse</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Storage Bin</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Asset</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Supplier</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Remarks</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8; width: 160px;">Label Code</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8; width: 180px;">Scanned At</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8; width: 140px;">Scanned By</th>
+              <th class="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-right" style="color:#94a3b8; width: 120px;">Updated Stock</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="logs.length === 0">
-              <td colspan="9" class="text-center py-12" style="color:#475569;">Tidak ada data transaksi ditemukan.</td>
+              <td colspan="12" class="text-center py-12" style="color:#475569;">Tidak ada data transaksi ditemukan.</td>
             </tr>
             <tr v-for="(log, index) in paginatedLogs" :key="log.id" class="transition-colors" style="border-top:1px solid #23324d;" @mouseenter="$event.currentTarget.style.background='#162235'" @mouseleave="$event.currentTarget.style.background='transparent'">
-              <td class="px-5 py-4 font-mono text-xs font-medium" style="color:#94a3b8;">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
-              <td class="px-5 py-4">
-                <p class="font-mono font-bold text-xs" style="color:#2563eb;">{{ log.referenceNumber }}</p>
-                <p class="text-xs mt-0.5" style="color:#94a3b8;">{{ formatDateTime(log.createdAt) }}</p>
-              </td>
-              <td class="px-5 py-4">
+              <td class="px-4 py-4 font-mono text-xs font-medium" style="color:#94a3b8;">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
+              <td class="px-4 py-4 font-mono font-bold text-xs" style="color:#2563eb;">{{ log.referenceNumber }}</td>
+              <td class="px-4 py-4">
                 <span class="px-2.5 py-1 rounded-md text-xs font-semibold" :style="log.type==='inbound'?'background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.2);':'background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);'">
-                  {{ log.type === 'inbound' ? 'MASUK' : 'KELUAR' }}
+                  {{ log.type === 'inbound' ? 'INBOUND' : 'OUTBOUND' }}
                 </span>
               </td>
-              <td class="px-5 py-4">
+              <td class="px-4 py-4 font-semibold" style="color:#e2e8f0;">{{ log.storageBin?.warehouse?.name || '–' }}</td>
+              <td class="px-4 py-4 font-mono text-emerald-400" style="color:#22c55e;">{{ log.storageBin?.code || '–' }}</td>
+              <td class="px-4 py-4">
                 <p class="font-semibold" style="color:#e2e8f0;">{{ log.asset?.name || '–' }}</p>
-                <p class="text-xs font-mono" style="color:#94a3b8;">{{ log.asset?.code || '–' }}</p>
+                <p class="text-xs font-mono text-slate-400">{{ log.asset?.code || '–' }}</p>
               </td>
-              <td class="px-5 py-4">
-                <p class="font-medium" style="color:#e2e8f0;">{{ log.storageBin?.warehouse?.name || '–' }}</p>
-                <p class="text-xs font-mono" style="color:#22c55e;">{{ log.storageBin?.code || '–' }}</p>
-              </td>
-              <td class="px-5 py-4 text-right font-semibold font-mono" :style="log.type==='inbound'?'color:#22c55e;':'color:#ef4444;'">
-                {{ log.type === 'inbound' ? '+' : '-' }}{{ log.quantity }}
-              </td>
-              <td class="px-5 py-4 text-right font-mono" style="color:#94a3b8;">
-                Rp {{ Number(log.price).toLocaleString('id-ID') }}
-              </td>
-              <td class="px-5 py-4 text-right font-semibold font-mono" style="color:#e2e8f0;">
-                Rp {{ (Number(log.quantity) * Number(log.price)).toLocaleString('id-ID') }}
-              </td>
-              <td class="px-5 py-4">
-                <p class="text-xs font-medium truncate max-w-[180px]" style="color:#e2e8f0;">{{ log.type==='inbound' ? (log.supplier?.name || '–') : '–' }}</p>
-                <p class="text-xs mt-0.5" style="color:#94a3b8;">Oleh: {{ log.user?.fullName || log.user?.username || '–' }}</p>
-              </td>
+              <td class="px-4 py-4" style="color:#e2e8f0;">{{ log.type==='inbound' ? (log.supplier?.name || '–') : '–' }}</td>
+              <td class="px-4 py-4 text-xs italic" style="color:#94a3b8;">{{ log.remarks || '–' }}</td>
+              <td class="px-4 py-4 font-mono font-bold text-slate-200">{{ log.labelCode }}</td>
+              <td class="px-4 py-4 text-xs" style="color:#94a3b8;">{{ formatDateTime(log.createdAt) }}</td>
+              <td class="px-4 py-4" style="color:#e2e8f0;">{{ log.user?.fullName || log.user?.username || '–' }}</td>
+              <td class="px-4 py-4 text-right font-bold font-mono" style="color:#22c55e;">{{ log.updatedStock }} unit</td>
             </tr>
           </tbody>
         </table>

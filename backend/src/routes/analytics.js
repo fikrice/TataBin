@@ -14,5 +14,6 @@ analyticsRouter.get('/overview', AuthMiddleware.authenticate, AnalyticsControlle
  * Endpoint data sebaran stok dikelompokkan per gudang
  */
 analyticsRouter.get('/warehouse-stock', AuthMiddleware.authenticate, AnalyticsController.getStockByWarehouse);
+analyticsRouter.get('/asset-stocks', AuthMiddleware.authenticate, AnalyticsController.getAssetStocks);
 
 export default analyticsRouter;

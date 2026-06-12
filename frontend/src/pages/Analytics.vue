@@ -5,15 +5,27 @@
         <h1 class="text-xl font-bold" style="color:#e2e8f0;">TataBin Analytics</h1>
         <p class="text-sm mt-0.5" style="color:#94a3b8;">Distribusi stok dan visualisasi layout ruang penyimpanan</p>
       </div>
+      
+      <!-- TAB NAVIGATION -->
+      <div class="flex gap-2 p-1 rounded-lg" style="background:#111c2d; border:1px solid #23324d;">
+        <button @click="activeTab = 'layout'" class="px-4 py-1.5 rounded-md text-xs font-semibold transition-all"
+                :style="activeTab === 'layout' ? 'background:#2563eb; color:white;' : 'color:#94a3b8;'">
+          Layout Gudang
+        </button>
+        <button @click="activeTab = 'chart'" class="px-4 py-1.5 rounded-md text-xs font-semibold transition-all"
+                :style="activeTab === 'chart' ? 'background:#2563eb; color:white;' : 'color:#94a3b8;'">
+          Grafik Stok Aset
+        </button>
+      </div>
     </div>
 
     <!-- OVERVIEW STATS CARD -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
       <!-- Total Nilai Aset -->
       <div class="rounded-xl p-5" style="background:#111c2d; border:1px solid #23324d;">
         <p class="text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Valuasi Total Aset</p>
         <p class="text-2xl font-bold mt-2" style="color:#e2e8f0;">Rp {{ overview.totalValuation?.toLocaleString('id-ID') || 0 }}</p>
-        <p class="text-xs mt-1" style="color:#22c55e;">Berdasarkan harga perolehan terakhir</p>
+        <p class="text-xs mt-1" style="color:#22c55e;">Berdasarkan harga perolehan</p>
       </div>
 
       <!-- Slot Bins Terisi -->
@@ -38,7 +50,7 @@
       <div class="rounded-xl p-5" style="background:#111c2d; border:1px solid #23324d;">
         <p class="text-xs font-semibold uppercase tracking-wider" style="color:#94a3b8;">Jumlah Unit Aset</p>
         <p class="text-2xl font-bold mt-2" style="color:#2563eb;">{{ overview.totalStock?.toLocaleString('id-ID') || 0 }} <span class="text-sm font-normal text-slate-400">Unit</span></p>
-        <p class="text-xs mt-1" style="color:#94a3b8;">Terbagi dalam {{ overview.totalAssets }} jenis SKU · {{ overview.stockRecords }} record stok</p>
+        <p class="text-xs mt-1" style="color:#94a3b8;">Terbagi dalam {{ overview.totalAssets }} jenis SKU</p>
       </div>
 
       <!-- Total Log Transaksi -->
@@ -52,8 +64,8 @@
       </div>
     </div>
 
-    <!-- WAREHOUSE GRID VISUALIZATION -->
-    <div class="rounded-xl p-6 mb-8" style="background:#111c2d; border:1px solid #23324d;">
+    <!-- TAB Content 1: WAREHOUSE GRID VISUALIZATION -->
+    <div v-if="activeTab === 'layout'" class="rounded-xl p-6 mb-8" style="background:#111c2d; border:1px solid #23324d;">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <div>
           <h2 class="text-base font-semibold" style="color:#e2e8f0;">Visualisasi Layout Gudang</h2>
@@ -130,8 +142,79 @@
       </div>
     </div>
 
+    <!-- TAB Content 2: GRAFIK STOK ASET (CHART) -->
+    <div v-if="activeTab === 'chart'" class="rounded-xl p-6 mb-8" style="background:#111c2d; border:1px solid #23324d;">
+      <h2 class="text-base font-semibold mb-6" style="color:#e2e8f0;">Grafik Stok Kuantitas Aset</h2>
+
+      <!-- FILTER PANEL CHART -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8 p-4 rounded-xl" style="background:#0a1220; border:1px solid #23324d;">
+        <!-- Filter Gudang -->
+        <div>
+          <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:#94a3b8;">Filter Gudang</label>
+          <div class="relative">
+            <select v-model="chartFilters.warehouseId" @change="handleChartWarehouseChange" class="w-full px-3 py-2 rounded-lg text-sm outline-none appearance-none pr-10" style="background:#111c2d; border:1px solid #23324d; color:#e2e8f0;">
+              <option value="">Semua Gudang</option>
+              <option v-for="wh in warehousesList" :key="wh.id" :value="wh.id">{{ wh.name }}</option>
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none" style="color:#94a3b8;">
+              <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </div>
+          </div>
+        </div>
+        <!-- Filter Slot Bin -->
+        <div>
+          <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style="color:#94a3b8;">Filter Slot Bin</label>
+          <div class="relative">
+            <select v-model="chartFilters.storageBinId" @change="fetchAssetStocks" :disabled="!chartFilters.warehouseId" class="w-full px-3 py-2 rounded-lg text-sm outline-none appearance-none pr-10 disabled:opacity-40 disabled:cursor-not-allowed" style="background:#111c2d; border:1px solid #23324d; color:#e2e8f0;">
+              <option value="">Semua Slot Bin</option>
+              <option v-for="bin in filteredChartBins" :key="bin.id" :value="bin.id">{{ bin.code }}</option>
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none" style="color:#94a3b8;">
+              <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </div>
+          </div>
+        </div>
+        <!-- Reset / Apply Buttons -->
+        <div class="flex items-end">
+          <button @click="resetChartFilters" class="w-full py-2 rounded-lg text-sm font-semibold text-white transition-all bg-red-950/40 border border-red-500 hover:bg-red-500/20">
+            Reset Filter
+          </button>
+        </div>
+      </div>
+
+      <!-- HORIZONTAL BAR CHART -->
+      <div v-if="loadingChart" class="flex items-center justify-center py-20 text-slate-400">
+        <svg class="animate-spin w-6 h-6 mr-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Memuat data grafik...
+      </div>
+
+      <div v-else-if="assetStocks.length === 0" class="text-center py-16 text-slate-500">
+        Tidak ada data aset terdaftar.
+      </div>
+
+      <div v-else class="space-y-6">
+        <div v-for="item in assetStocks" :key="item.assetId" class="space-y-2">
+          <!-- Labels & Info -->
+          <div class="flex justify-between items-end text-sm">
+            <div>
+              <span class="font-bold text-slate-200">{{ item.name }}</span>
+              <span class="ml-2 font-mono text-xs text-slate-400">({{ item.code }})</span>
+            </div>
+            <span class="font-mono font-bold text-blue-400">{{ item.quantity }} unit</span>
+          </div>
+          <!-- Bar Graph Proportion -->
+          <div class="w-full h-5 rounded-lg overflow-hidden relative shadow-inner flex items-center" style="background:#0a1220; border:1px solid #23324d;">
+            <div class="h-full rounded-l-lg transition-all duration-500 ease-out"
+                 :style="`width: ${getBarPercent(item.quantity)}%; background: linear-gradient(90deg, #1d4ed8, #10b981)`">
+            </div>
+            <!-- Empty indicator if 0 -->
+            <span v-if="item.quantity === 0" class="text-[10px] pl-3 text-slate-600 font-bold uppercase">HABIS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- DETAIL MODAL FOR BIN -->
-    <div v-if="selectedBin" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);" @click.self="selectedBin=null">
+    <div v-if="selectedBin" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="selectedBin=null">
       <div class="w-full max-w-md rounded-2xl p-6" style="background:#111c2d; border:1px solid #23324d;">
         <div class="flex items-center justify-between mb-5">
           <h3 class="text-lg font-bold" style="color:#e2e8f0;">Detail Slot: {{ selectedBin.code }}</h3>
@@ -163,9 +246,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import DashboardLayout from '../layouts/DashboardLayout.vue';
 import api from '../services/api.js';
+
+const activeTab = ref('layout');
 
 const warehousesStock = ref([]);
 const loading = ref(false);
@@ -195,6 +280,32 @@ const activeWarehouse = computed(() => {
   return warehousesStock.value[selectedWarehouseIndex.value];
 });
 
+// Chart tab states
+const loadingChart = ref(false);
+const assetStocks = ref([]);
+const warehousesList = ref([]);
+const chartBins = ref([]);
+
+const chartFilters = reactive({
+  warehouseId: '',
+  storageBinId: ''
+});
+
+const filteredChartBins = computed(() => {
+  if (!chartFilters.warehouseId) return [];
+  return chartBins.value.filter(bin => bin.warehouseId === chartFilters.warehouseId);
+});
+
+// Calculate maximum quantity to scale bar percentages
+const maxQty = computed(() => {
+  const max = Math.max(...assetStocks.value.map(item => item.quantity), 0);
+  return max === 0 ? 1 : max;
+});
+
+function getBarPercent(qty) {
+  return Math.round((qty / maxQty.value) * 100);
+}
+
 async function fetchOverview() {
   try {
     const { data } = await api.get('/analytics/overview');
@@ -213,7 +324,47 @@ async function fetchWarehouseStock() {
     console.error('Gagal memuat distribusi gudang:', error);
   } finally {
     loading.value = false;
+    setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 50);
   }
+}
+
+async function fetchAssetStocks() {
+  loadingChart.value = true;
+  try {
+    const params = {
+      warehouseId: chartFilters.warehouseId,
+      storageBinId: chartFilters.storageBinId
+    };
+    const { data } = await api.get('/analytics/asset-stocks', { params });
+    assetStocks.value = data.data;
+  } catch (error) {
+    console.error('Gagal memuat grafik stok aset:', error);
+  } finally {
+    loadingChart.value = false;
+  }
+}
+
+async function loadDropdownsData() {
+  try {
+    const whRes = await api.get('/warehouses');
+    warehousesList.value = whRes.data.data;
+    
+    const binRes = await api.get('/storage-bins?limit=1000');
+    chartBins.value = binRes.data.data;
+  } catch (err) {
+    console.error('Gagal memuat filter dropdown grafik:', err);
+  }
+}
+
+function handleChartWarehouseChange() {
+  chartFilters.storageBinId = '';
+  fetchAssetStocks();
+}
+
+function resetChartFilters() {
+  chartFilters.warehouseId = '';
+  chartFilters.storageBinId = '';
+  fetchAssetStocks();
 }
 
 function getBinCardStyle(bin) {
@@ -236,6 +387,16 @@ function showBinDetail(bin) {
   selectedBin.value = bin;
 }
 
+watch(activeTab, (newTab) => {
+  if (newTab === 'chart') {
+    fetchAssetStocks();
+    loadDropdownsData();
+  } else {
+    fetchWarehouseStock();
+  }
+  setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 50);
+});
+
 onMounted(() => {
   fetchOverview();
   fetchWarehouseStock();
@@ -244,3 +405,10 @@ onMounted(() => {
   }
 });
 </script>
+
+<style scoped>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+</style>

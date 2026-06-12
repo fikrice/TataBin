@@ -48,8 +48,10 @@ app.use('/api/users', userRouter);
 // Registrasi Rute API Operasional (Inbound & Outbound)
 import inboundRouter from './src/routes/inbound.js';
 import outboundRouter from './src/routes/outbound.js';
+import workOrderRouter from './src/routes/workOrder.js';
 app.use('/api/inbound', inboundRouter);
 app.use('/api/outbound', outboundRouter);
+app.use('/api/work-orders', workOrderRouter);
 
 // Registrasi Rute API Laporan & Analitik
 import reportRouter from './src/routes/report.js';

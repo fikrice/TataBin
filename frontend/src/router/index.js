@@ -71,6 +71,18 @@ const routes = [
     meta: { requiresAuth: true, title: 'Operasional Outbound | TataBin WMS' },
   },
   {
+    path: '/work-orders',
+    name: 'WorkOrders',
+    component: () => import('../pages/WorkOrders.vue'),
+    meta: { requiresAuth: true, title: 'Work Orders | TataBin WMS' },
+  },
+  {
+    path: '/work-orders/:id/process',
+    name: 'WorkOrderProcess',
+    component: () => import('../pages/WorkOrderProcess.vue'),
+    meta: { requiresAuth: true, title: 'Proses Work Order | TataBin WMS' },
+  },
+  {
     path: '/reports',
     name: 'Reports',
     component: () => import('../pages/Reports.vue'),

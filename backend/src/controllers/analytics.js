@@ -133,6 +133,60 @@ class AnalyticsController {
       next(error);
     }
   }
+
+  /**
+   * Mengambil data stok untuk semua aset dengan filter opsional gudang dan slot bin
+   */
+  static async getAssetStocks(req, res, next) {
+    try {
+      const { warehouseId, storageBinId } = req.query;
+      const whereClause = {};
+      const binWhere = {};
+
+      if (storageBinId) {
+        whereClause.storageBinId = storageBinId;
+      } else if (warehouseId) {
+        binWhere.warehouseId = warehouseId;
+      }
+
+      const stocks = await Stock.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: StorageBin,
+            as: 'storageBin',
+            where: Object.keys(binWhere).length > 0 ? binWhere : undefined,
+            attributes: ['id', 'code', 'warehouseId']
+          }
+        ]
+      });
+
+      const assets = await Asset.findAll({
+        attributes: ['id', 'code', 'name'],
+        order: [['code', 'ASC']]
+      });
+
+      const result = assets.map(asset => {
+        const quantity = stocks
+          .filter(s => s.assetId === asset.id)
+          .reduce((sum, s) => sum + Number(s.quantity), 0);
+        return {
+          assetId: asset.id,
+          code: asset.code,
+          name: asset.name,
+          quantity
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Data kuantitas stok per aset berhasil dimuat',
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default AnalyticsController;

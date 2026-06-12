@@ -1,19 +1,17 @@
 import db from '../models/index.js';
 import ExcelJS from 'exceljs';
 
-const { TransactionLog, Asset, StorageBin, Supplier, User, Warehouse } = db;
+const { WorkOrderScan, WorkOrder, Asset, StorageBin, Supplier, User, Warehouse } = db;
+const { Op } = db.Sequelize;
 
 /**
  * Controller Laporan (ReportController)
- * Mengelola riwayat log transaksi dan ekspor laporan ke Excel.
+ * Mengelola riwayat log scan label dan ekspor laporan ke Excel.
  */
 class ReportController {
 
   /**
-   * Mengambil daftar log transaksi dengan filter tanggal, tipe, dan pencarian
-   * @param {object} req - Request query: { type, startDate, endDate, search }
-   * @param {object} res - Response object
-   * @param {function} next - Error handler
+   * Mengambil daftar log scan label dengan filter tanggal, tipe, dan pencarian
    */
   static async getLogs(req, res, next) {
     try {
@@ -25,42 +23,83 @@ class ReportController {
       }
 
       if (startDate || endDate) {
-        whereClause.createdAt = {};
+        whereClause.scannedAt = {};
         if (startDate) {
-          whereClause.createdAt[db.Sequelize.Op.gte] = new Date(startDate + ' 00:00:00');
+          whereClause.scannedAt[Op.gte] = new Date(startDate + ' 00:00:00');
         }
         if (endDate) {
-          whereClause.createdAt[db.Sequelize.Op.lte] = new Date(endDate + ' 23:59:59');
+          whereClause.scannedAt[Op.lte] = new Date(endDate + ' 23:59:59');
         }
       }
 
       if (search && search.trim() !== '') {
-        whereClause.referenceNumber = {
-          [db.Sequelize.Op.iLike]: `%${search}%`
-        };
+        whereClause[Op.or] = [
+          { labelCode: { [Op.iLike]: `%${search}%` } },
+          { '$workOrder.code$': { [Op.iLike]: `%${search}%` } }
+        ];
       }
 
       const page = Math.max(1, parseInt(req.query.page) || 1);
       const limit = Math.max(1, parseInt(req.query.limit) || 10);
       const offset = (page - 1) * limit;
 
-      const { count, rows } = await TransactionLog.findAndCountAll({
+      const { count, rows } = await WorkOrderScan.findAndCountAll({
         where: whereClause,
         include: [
-          { model: Asset, as: 'asset' },
-          { model: StorageBin, as: 'storageBin', include: [{ model: Warehouse, as: 'warehouse' }] },
-          { model: Supplier, as: 'supplier' },
+          {
+            model: WorkOrder,
+            as: 'workOrder',
+            include: [
+              { model: Warehouse, as: 'warehouse' },
+              { model: StorageBin, as: 'storageBin' },
+              { model: Asset, as: 'asset', include: [{ model: Supplier, as: 'supplier' }] }
+            ]
+          },
           { model: User, as: 'user', attributes: ['id', 'username', 'fullName'] }
         ],
         limit,
         offset,
-        order: [['createdAt', 'DESC']]
+        order: [['scannedAt', 'DESC']]
+      });
+
+      // Map data to match frontend expectations
+      const mappedRows = rows.map(scan => {
+        const wo = scan.workOrder || {};
+        const asset = wo.asset || {};
+        return {
+          id: scan.id,
+          referenceNumber: wo.code || '–',
+          labelCode: scan.labelCode,
+          createdAt: scan.scannedAt,
+          type: scan.type,
+          quantity: 1,
+          price: asset.price || 0,
+          updatedStock: scan.updatedStock,
+          remarks: wo.remarks || '',
+          asset: {
+            code: asset.code || '–',
+            name: asset.name || '–'
+          },
+          storageBin: {
+            code: wo.storageBin?.code || '–',
+            warehouse: {
+              name: wo.warehouse?.name || '–'
+            }
+          },
+          supplier: {
+            name: asset.supplier?.name || '–'
+          },
+          user: {
+            username: scan.user?.username || '–',
+            fullName: scan.user?.fullName || '–'
+          }
+        };
       });
 
       return res.status(200).json({
         success: true,
         message: 'Log transaksi berhasil dimuat',
-        data: rows,
+        data: mappedRows,
         pagination: {
           page,
           limit,
@@ -75,9 +114,6 @@ class ReportController {
 
   /**
    * Mengekspor log transaksi ke file Excel menggunakan exceljs
-   * @param {object} req - Request query (filter yang sama dengan getLogs)
-   * @param {object} res - Response stream file Excel
-   * @param {function} next - Error handler
    */
   static async exportExcel(req, res, next) {
     try {
@@ -89,96 +125,88 @@ class ReportController {
       }
 
       if (startDate || endDate) {
-        whereClause.createdAt = {};
+        whereClause.scannedAt = {};
         if (startDate) {
-          whereClause.createdAt[db.Sequelize.Op.gte] = new Date(startDate + ' 00:00:00');
+          whereClause.scannedAt[Op.gte] = new Date(startDate + ' 00:00:00');
         }
         if (endDate) {
-          whereClause.createdAt[db.Sequelize.Op.lte] = new Date(endDate + ' 23:59:59');
+          whereClause.scannedAt[Op.lte] = new Date(endDate + ' 23:59:59');
         }
       }
 
       if (search && search.trim() !== '') {
-        whereClause.referenceNumber = {
-          [db.Sequelize.Op.iLike]: `%${search}%`
-        };
+        whereClause[Op.or] = [
+          { labelCode: { [Op.iLike]: `%${search}%` } },
+          { '$workOrder.code$': { [Op.iLike]: `%${search}%` } }
+        ];
       }
 
-      const logs = await TransactionLog.findAll({
+      const scans = await WorkOrderScan.findAll({
         where: whereClause,
         include: [
-          { model: Asset, as: 'asset' },
-          { model: StorageBin, as: 'storageBin', include: [{ model: Warehouse, as: 'warehouse' }] },
-          { model: Supplier, as: 'supplier' },
+          {
+            model: WorkOrder,
+            as: 'workOrder',
+            include: [
+              { model: Warehouse, as: 'warehouse' },
+              { model: StorageBin, as: 'storageBin' },
+              { model: Asset, as: 'asset', include: [{ model: Supplier, as: 'supplier' }] }
+            ]
+          },
           { model: User, as: 'user', attributes: ['id', 'username', 'fullName'] }
         ],
-        order: [['createdAt', 'DESC']]
+        order: [['scannedAt', 'DESC']]
       });
 
-      // Membuat workbook baru menggunakan exceljs
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Log Transaksi WMS');
 
-      // Tentukan kolom worksheet beserta lebarnya
+      // 11 Columns as specified in PDF
       worksheet.columns = [
-        { header: 'No. Referensi', key: 'referenceNumber', width: 25 },
-        { header: 'Tanggal & Waktu', key: 'createdAt', width: 22 },
-        { header: 'Tipe', key: 'type', width: 12 },
-        { header: 'Nama Aset', key: 'assetName', width: 25 },
-        { header: 'SKU', key: 'assetCode', width: 15 },
-        { header: 'Gudang', key: 'warehouseName', width: 20 },
-        { header: 'Slot Bin', key: 'binCode', width: 12 },
-        { header: 'Kuantitas (Unit)', key: 'quantity', width: 15 },
-        { header: 'Harga Satuan', key: 'price', width: 18 },
-        { header: 'Total Nilai', key: 'totalValue', width: 20 },
-        { header: 'Pemasok (Inbound)', key: 'supplierName', width: 25 },
-        { header: 'Petugas', key: 'userFullName', width: 20 }
+        { header: 'Work Order Number', key: 'woNumber', width: 25 },
+        { header: 'WO Category', key: 'woCategory', width: 15 },
+        { header: 'Warehouse Name', key: 'warehouseName', width: 20 },
+        { header: 'Storage Bin Address', key: 'binCode', width: 20 },
+        { header: 'Asset Name', key: 'assetName', width: 25 },
+        { header: 'Supplier Name', key: 'supplierName', width: 25 },
+        { header: 'Remarks', key: 'remarks', width: 25 },
+        { header: 'Label Code', key: 'labelCode', width: 25 },
+        { header: 'Scanned At', key: 'scannedAt', width: 22 },
+        { header: 'Scanned By', key: 'scannedBy', width: 20 },
+        { header: 'Updated Stock', key: 'updatedStock', width: 15 }
       ];
 
-      // Format header style (mempercantik baris pertama)
       worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
       worksheet.getRow(1).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: '1E3A8A' } // Warna biru tua industrial
+        fgColor: { argb: '1E3A8A' }
       };
       worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
-      // Isi baris data log transaksi
-      logs.forEach(log => {
-        const qty = Number(log.quantity);
-        const price = Number(log.price);
-        const total = qty * price;
-
+      scans.forEach(scan => {
+        const wo = scan.workOrder || {};
+        const asset = wo.asset || {};
         worksheet.addRow({
-          referenceNumber: log.referenceNumber,
-          createdAt: new Date(log.createdAt).toLocaleString('id-ID'),
-          type: log.type === 'inbound' ? 'MASUK' : 'KELUAR',
-          assetName: log.asset?.name || '–',
-          assetCode: log.asset?.code || '–',
-          warehouseName: log.storageBin?.warehouse?.name || '–',
-          binCode: log.storageBin?.code || '–',
-          quantity: qty,
-          price: price,
-          totalValue: total,
-          supplierName: log.supplier?.name || '–',
-          userFullName: log.user?.fullName || log.user?.username || '–'
+          woNumber: wo.code || '–',
+          woCategory: scan.type === 'inbound' ? 'INBOUND' : 'OUTBOUND',
+          warehouseName: wo.warehouse?.name || '–',
+          binCode: wo.storageBin?.code || '–',
+          assetName: asset.name || '–',
+          supplierName: scan.type === 'inbound' ? (asset.supplier?.name || '–') : '–',
+          remarks: wo.remarks || '–',
+          labelCode: scan.labelCode,
+          scannedAt: new Date(scan.scannedAt).toLocaleString('id-ID'),
+          scannedBy: scan.user?.fullName || scan.user?.username || '–',
+          updatedStock: scan.updatedStock
         });
       });
 
-      // Format angka keuangan untuk kolom Harga Satuan & Total Nilai
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber > 1) {
-          // Kolom 8 (Kuantitas) diset rata tengah
-          row.getCell(8).alignment = { horizontal: 'center' };
-          
-          // Kolom 9 (Harga) & Kolom 10 (Total) diformat mata uang
-          row.getCell(9).numFmt = '"Rp"#,##0.00';
-          row.getCell(10).numFmt = '"Rp"#,##0.00';
-
-          // Pewarnaan teks berdasarkan tipe transaksi (Hijau untuk Masuk, Merah untuk Keluar)
-          const typeCell = row.getCell(3);
-          if (typeCell.value === 'MASUK') {
+          row.getCell(11).alignment = { horizontal: 'center' };
+          const typeCell = row.getCell(2);
+          if (typeCell.value === 'INBOUND') {
             typeCell.font = { color: { argb: '15803D' }, bold: true };
           } else {
             typeCell.font = { color: { argb: 'B91C1C' }, bold: true };
@@ -186,7 +214,6 @@ class ReportController {
         }
       });
 
-      // Set header response untuk mengunduh berkas attachment
       res.setHeader(
         'Content-Type',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -196,7 +223,6 @@ class ReportController {
         `attachment; filename=Log_Transaksi_WMS_${Date.now()}.xlsx`
       );
 
-      // Tulis file workbook langsung ke stream response
       await workbook.xlsx.write(res);
       return res.end();
 
