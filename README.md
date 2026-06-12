@@ -30,20 +30,29 @@ Sistem ini memakai arsitektur terpisah antara backend API dan frontend SPA. Tamp
 
 ## Aturan Bisnis & Integritas Data
 
-Sistem ini menerapkan validasi bisnis untuk menjaga konsistensi stok:
+Sistem ini menerapkan validasi bisnis untuk menjaga konsistensi stok dan akurasi log pergudangan:
 
-1. **Pencocokan Kategori Aset & Bin**
+1. **Alur Kerja Berbasis Work Order (WO)**
+    - Seluruh aktivitas penerimaan (Inbound) dan pengeluaran (Outbound) barang wajib didasarkan pada dokumen rujukan **Work Order** dengan target kuantitas yang ditentukan.
+    - Status Work Order akan bertransisi secara dinamis: `To-Do` (Baru dibuat) $\rightarrow$ `On Progress` (Mulai dipindai) $\rightarrow$ `Done` (Kuantitas target terpenuhi).
+
+2. **Pencocokan Kategori Aset & Bin**
     - Aset dan Storage Bin memiliki kategori ukuran yang sama (`Small Asset`, `Medium Asset`, `Large Asset`).
     - Aset hanya boleh dialokasikan ke Storage Bin dengan kategori yang cocok.
 
-2. **Aturan Alokasi Slot (1-Bin-1-Aset)**
+3. **Aturan Alokasi Slot (1-Bin-1-Aset)**
     - Satu Storage Bin hanya boleh menampung satu jenis aset unik (`1 Storage Bin = 1 Part Allocation`).
 
-3. **Pelepasan Stok FIFO (First In First Out)**
-    - Saat outbound, sistem mendebit kuantitas stok dari rekaman data tertua terlebih dahulu berdasarkan `created_at`.
+4. **Penegakan FIFO (First In First Out) Saat Pemindaian**
+    - Pada proses Outbound, sistem secara dinamis memverifikasi scan barcode label unik.
+    - Operator **wajib memindai unit terlama** yang masuk ke bin tersebut terlebih dahulu (berdasarkan tanggal scan masuk). Jika operator memindai unit baru mendahului unit terlama, sistem akan menolak pemindaian tersebut secara instan.
 
-4. **Log Transaksi Terpusat**
-    - Aktivitas inbound dan outbound direkam ke tabel `transaction_logs`.
+5. **Format Lembar Cetak QR Label Terstandar (A4)**
+    - Crew dapat mencetak batch label barcode ke media kertas A4 dengan tata letak grid 2 kolom dan 5 baris (maksimal 10 label per lembar).
+    - Setiap kartu label memuat Kode SKU, Nama Aset, Harga (Rupiah), Brand (`WMS Solution`), QR Code riil, dan nama Supplier.
+
+6. **Log Transaksi Terpusat (11 Kolom Wajib)**
+    - Aktivitas inbound dan outbound direkam secara mendetail per unit label unik ke tabel `work_order_scans` dan disinkronkan ke tabel riwayat lama, memuat 11 parameter data wajib untuk laporan audit.
 
 ---
 
@@ -154,6 +163,26 @@ npm run dev
 ```
 
 Frontend berjalan di `http://localhost:5173`.
+
+---
+
+## QA API Testing (Pengujian Otomatis)
+
+Sistem ini dilengkapi dengan script pengujian otomatis untuk memverifikasi fungsionalitas seluruh endpoint API penting, alur kerja Work Order, serta penegakan aturan FIFO.
+
+Jalankan perintah ini di dalam folder `backend`:
+```bash
+cd backend
+npm run test:api
+```
+
+Script akan memverifikasi:
+- Autentikasi dan penerbitan token JWT.
+- Integrasi CRUD & pencarian Master Data.
+- Siklus hidup Inbound Work Order (pembuatan, pratinjau label, dan scan masuk hingga status Done).
+- Siklus hidup Outbound Work Order (pembuatan, FIFO suggestions).
+- **FIFO Enforcement**: Memastikan bahwa memindai unit di luar urutan FIFO akan ditolak secara ketat oleh sistem.
+- Ekspor berkas audit log transaksi ke format Excel (.xlsx).
 
 ---
 
